@@ -332,8 +332,16 @@ func TestMediaDescriptionFingerprints(t *testing.T) {
 		},
 	}
 
+	track, err := NewTrackLocalStaticRTP(RTPCodecCapability{MimeType: "audio/opus"}, "pion", "pion")
+	assert.NoError(t, err)
+	api := NewAPI()
+	err = api.mediaEngine.RegisterDefaultCodecs()
+	assert.NoError(t, err)
 	for i := 0; i < 2; i++ {
-		media[i].transceivers[0].setSender(&RTPSender{})
+		media[i].transceivers[0].setSender(&RTPSender{
+			api: api,
+		})
+		media[i].transceivers[0].Sender().setTrack(track)
 		media[i].transceivers[0].setDirection(RTPTransceiverDirectionSendonly)
 	}
 

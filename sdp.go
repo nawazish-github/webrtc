@@ -276,7 +276,7 @@ func populateLocalCandidates(sessionDescription *SessionDescription, i *ICEGathe
 	}
 }
 
-func addTransceiverSDP(d *sdp.SessionDescription, isPlanB, shouldAddCandidates bool, dtlsFingerprints []DTLSFingerprint, mediaEngine *MediaEngine, midValue string, iceParams ICEParameters, candidates []ICECandidate, dtlsRole sdp.ConnectionRole, iceGatheringState ICEGatheringState, mediaSection mediaSection) (bool, error) {
+func addTransceiverSDP(d *sdp.SessionDescription, isPlanB, shouldAddCandidates bool, dtlsFingerprints []DTLSFingerprint, mediaEngine *MediaEngine, midValue string, iceParams ICEParameters, candidates []ICECandidate, dtlsRole sdp.ConnectionRole, iceGatheringState ICEGatheringState, mediaSection mediaSection) (bool, error) { //nolint:gocognit
 	transceivers := mediaSection.transceivers
 	if len(transceivers) < 1 {
 		return false, errSDPZeroTransceivers
@@ -313,12 +313,40 @@ func addTransceiverSDP(d *sdp.SessionDescription, isPlanB, shouldAddCandidates b
 		return false, nil
 	}
 
-	for id, rtpExtension := range mediaEngine.negotiatedHeaderExtensionsForType(t.kind) {
-		extURL, err := url.Parse(rtpExtension.uri)
-		if err != nil {
-			return false, err
+	if isPlanB {
+		for id, rtpExtension := range mediaEngine.negotiatedHeaderExtensionsForType(t.kind) {
+			extURL, err := url.Parse(rtpExtension.uri)
+			if err != nil {
+				return false, err
+			}
+			media.WithExtMap(sdp.ExtMap{Value: id, URI: extURL})
 		}
-		media.WithExtMap(sdp.ExtMap{Value: id, URI: extURL})
+	} else {
+		var extHeaders []RTPHeaderExtensionParameters
+		switch t.Direction() {
+		case RTPTransceiverDirectionSendrecv:
+			if t.Receiver() != nil {
+				extHeaders = t.Receiver().GetParameters().HeaderExtensions
+			} else if t.Sender() != nil {
+				extHeaders = t.Sender().GetParameters().HeaderExtensions
+			}
+		case RTPTransceiverDirectionSendonly:
+			if t.Sender() != nil {
+				extHeaders = t.Sender().GetParameters().HeaderExtensions
+			}
+		case RTPTransceiverDirectionRecvonly:
+			if t.Receiver() != nil {
+				extHeaders = t.Receiver().GetParameters().HeaderExtensions
+			}
+		case RTPTransceiverDirectionInactive:
+		}
+		for _, rtpExtension := range extHeaders {
+			extURL, err := url.Parse(rtpExtension.URI)
+			if err != nil {
+				return false, err
+			}
+			media.WithExtMap(sdp.ExtMap{Value: int(rtpExtension.ID), URI: extURL})
+		}
 	}
 
 	if len(mediaSection.ridMap) > 0 {

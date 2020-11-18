@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -16,7 +15,6 @@ import (
 
 	"github.com/pion/randutil"
 	"github.com/pion/rtcp"
-	"github.com/pion/sdp/v3"
 	"github.com/pion/transport/test"
 	"github.com/pion/webrtc/v3/pkg/media"
 	"github.com/stretchr/testify/assert"
@@ -574,24 +572,24 @@ func TestOfferRejectionMissingCodec(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := signalPair(pc, noCodecPC); err != nil {
-		t.Fatal(err)
+	if err := signalPair(pc, noCodecPC); err == nil {
+		t.Fatal("Must fail negotiation")
 	}
 
-	var sdes sdp.SessionDescription
-	if err := sdes.Unmarshal([]byte(pc.RemoteDescription().SDP)); err != nil {
-		t.Fatal(err)
-	}
-	var videoDesc sdp.MediaDescription
-	for _, m := range sdes.MediaDescriptions {
-		if m.MediaName.Media == "video" {
-			videoDesc = *m
-		}
-	}
+	// var sdes sdp.SessionDescription
+	// if err := sdes.Unmarshal([]byte(pc.RemoteDescription().SDP)); err != nil {
+	//	t.Fatal(err)
+	// }
+	// var videoDesc sdp.MediaDescription
+	// for _, m := range sdes.MediaDescriptions {
+	// 	if m.MediaName.Media == "video" {
+	//		videoDesc = *m
+	// 	}
+	// }
 
-	if got, want := videoDesc.MediaName.Formats, []string{"0"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("rejecting unknown codec: sdp m=%s, want trailing 0", *videoDesc.MediaName.String())
-	}
+	// if got, want := videoDesc.MediaName.Formats, []string{"0"}; !reflect.DeepEqual(got, want) {
+	//	t.Fatalf("rejecting unknown codec: sdp m=%s, want trailing 0", *videoDesc.MediaName.String())
+	// }
 
 	assert.NoError(t, noCodecPC.Close())
 	assert.NoError(t, pc.Close())
